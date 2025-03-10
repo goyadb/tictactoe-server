@@ -4,6 +4,7 @@ module.exports = function(server) {
     const io = require('socket.io')(server);
 
     var rooms = [];
+    var socketRooms = new Map();
 
     io.on('connection', function(socket) {
         console.log('사용자가 연결 되었습니다.');
@@ -13,17 +14,35 @@ module.exports = function(server) {
             socket.join(roomId);
             socket.emit('joinRoom', { roomId: roomId });
             socket.to(roomId).emit('startGame', { userId: socket.id });
+            socketRooms.set(socket.id, roomId);
         } else {
             var roomId = uuidv4();
             socket.join(roomId);
             socket.emit('createRoom', { roomId: roomId });
             rooms.push(roomId);
+            socketRooms.set(socket.id, roomId);
         }
 
-        socket.on('leaveRoom', function() {
-            socket.leave(roomId);
-            socket.emit('leaveRoom', { roomId: roomId });
-            socket.to(roomId).emit('gameEnded', { userId: socket.id });
+        socket.on('leaveRoom', function(roomData) {
+            socket.leave(roomData.roomId);
+            socket.emit('exitRoom');
+            socket.to(roomData.roomId).emit('endGame');
+
+            // 방 만든 후 혼자 들어갔다가 나갈 때, rooms에서 해당 방 정보 삭제
+            var roomId = socketRooms.get(socket.id);
+            const roomIdx = rooms.indexOf(roomId);
+            if (roomIdx !== -1) {
+                rooms.splice(roomIdx, 1);
+                console.log('방 삭제됨: ' + roomId);
+            }
+            socketRooms.delete(socket.id);
+        });
+        
+        socket.on('doPlayer', function(moveData) {
+            const roomId = moveData.roomId;
+            const position = moveData.position;
+
+            socket.to(roomId).emit('doOpponent', { position: position });
         });
 
         socket.on('sendMessage', function(message) {
@@ -33,20 +52,6 @@ module.exports = function(server) {
 
         socket.on('disconnect', function() {
             console.log('사용자가 연결을 끊었습니다.');
-
-            var socketRooms = Array.from(socket.rooms).filter(room => room !== socket.id);
-
-            socketRooms.forEach(function(roomId) {
-                socket.to(roomId).emit('gameEnded', { userId: socket.id })
-                
-                const roomSize = io.sockets.adapter.rooms.get(roomId).size || 0;
-                if (roomSize <= 1) {
-                    const idx = rooms.indexOf(roomId);
-                    if (idx !== -1) {
-                        rooms.splice(idx, 1);
-                    }
-                }
-            });
         });
     });
 }
