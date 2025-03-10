@@ -13,7 +13,7 @@ module.exports = function(server) {
             var roomId = rooms.shift();
             socket.join(roomId);
             socket.emit('joinRoom', { roomId: roomId });
-            socket.to(roomId).emit('startGame', { userId: socket.id });
+            socket.to(roomId).emit('startGame', { roomId: roomId });
             socketRooms.set(socket.id, roomId);
         } else {
             var roomId = uuidv4();
@@ -41,7 +41,7 @@ module.exports = function(server) {
         socket.on('doPlayer', function(moveData) {
             const roomId = moveData.roomId;
             const position = moveData.position;
-
+            console.log('doPlayer 메시지를 받았습니다: ' + roomId + ' ' + position);
             socket.to(roomId).emit('doOpponent', { position: position });
         });
 

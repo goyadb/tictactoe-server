@@ -32,7 +32,7 @@ app.use(session({
 
 // MongoDB
 async function connectDB() {
-  var databaseURL = "mongodb://localhost:27017/tictactoe";
+  var databaseURL = "mongodb+srv://<db_username>:<db_password>@cluster0.fj54l.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
   try {
     const database = await MongoClient.connect(databaseURL, {
